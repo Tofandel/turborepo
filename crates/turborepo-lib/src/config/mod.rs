@@ -1,4 +1,3 @@
-mod cache;
 mod env;
 mod file;
 mod override_env;
@@ -6,7 +5,6 @@ mod turbo_json;
 
 use std::{collections::HashMap, ffi::OsString, io};
 
-use biome_deserialize_macros::Deserializable;
 use camino::{Utf8Path, Utf8PathBuf};
 use convert_case::{Case, Casing};
 use derive_setters::Setters;
@@ -15,12 +13,13 @@ use file::{AuthFile, ConfigFile};
 use merge::Merge;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use override_env::OverrideEnvVars;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use struct_iterable::Iterable;
 use thiserror::Error;
 use tracing::debug;
 use turbo_json::TurboJsonReader;
 use turbopath::{AbsoluteSystemPath, AbsoluteSystemPathBuf};
+use turborepo_cache::CacheConfig;
 use turborepo_errors::TURBO_SITE;
 use turborepo_repository::package_graph::PackageName;
 
@@ -52,8 +51,6 @@ pub struct InvalidEnvPrefixError {
 pub enum Error {
     #[error("Authentication error: {0}")]
     Auth(#[from] turborepo_auth::Error),
-    #[error(transparent)]
-    Cache(#[from] cache::Error),
     #[error("Global config path not found")]
     NoGlobalConfigPath,
     #[error("Global auth file path not found")]
@@ -85,6 +82,8 @@ pub enum Error {
         config_path: AbsoluteSystemPathBuf,
         error: io::Error,
     },
+    #[error(transparent)]
+    Cache(#[from] turborepo_cache::config::Error),
     #[error(
         "Package tasks (<package>#<task>) are not allowed in single-package repositories: found \
          {task_id}"
@@ -202,18 +201,6 @@ const DEFAULT_API_URL: &str = "https://vercel.com/api";
 const DEFAULT_LOGIN_URL: &str = "https://vercel.com";
 const DEFAULT_TIMEOUT: u64 = 30;
 const DEFAULT_UPLOAD_TIMEOUT: u64 = 60;
-
-#[derive(Serialize, Deserialize, Deserializable, Debug, PartialEq, Eq, Clone, Default)]
-pub struct CacheActions {
-    read: bool,
-    write: bool,
-}
-
-#[derive(Serialize, Deserialize, Deserializable, Debug, PartialEq, Eq, Clone, Default)]
-pub struct CacheConfig {
-    fs: CacheActions,
-    remote: CacheActions,
-}
 
 // We intentionally don't derive Serialize so that different parts
 // of the code that want to display the config can tune how they
@@ -383,6 +370,10 @@ impl ConfigurationOptions {
                 ".turbo/cache"
             })
         })
+    }
+
+    pub fn cache(&self) -> CacheConfig {
+        self.cache.unwrap_or_default()
     }
 
     pub fn force(&self) -> bool {

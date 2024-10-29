@@ -29,8 +29,7 @@ mod loader;
 pub mod parser;
 
 pub use loader::TurboJsonLoader;
-
-use crate::config::CacheConfig;
+use turborepo_cache::CacheConfig;
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone, Deserializable)]
 #[serde(rename_all = "camelCase")]

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
-use crate::config::{CacheActions, CacheConfig};
+use crate::{CacheActions, CacheConfig};
 
 #[derive(Debug, Error, Diagnostic, PartialEq)]
 pub enum Error {
